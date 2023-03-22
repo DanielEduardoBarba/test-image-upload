@@ -6,6 +6,32 @@ import * as ImagePicker from "expo-image-picker"
 //from firebaseConfig if none is open already
 import { firebase } from './resources.js'
 
+//the resources.js should look something like....
+/*
+import firebase from 'firebase/compat/app'
+import 'firebase/compat/storage'
+import { initializeApp, getApps } from "firebase/app";
+
+
+export const firebaseConfig = {
+    apiKey: "********",
+    authDomain: "*********",
+    projectId: "********",
+    storageBucket: "********",
+    messagingSenderId: "*******",
+    appId: "*******""
+  }  
+
+if (!getApps.length) {
+    firebase.initializeApp(firebaseConfig)
+}
+const app = initializeApp(firebaseConfig);
+export {app, firebase}
+*/
+
+//actually it should look EXACTLY like that, just add 
+//your own firebaseConfig
+
 
 
 export default function App() {
