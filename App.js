@@ -5,9 +5,9 @@ import { Camera, CameraType} from 'expo-camera';
 import * as ImagePicker from "expo-image-picker"
 
 import { initializeApp, cert } from "firebase/app"
-import { getStorage, ref, uploadBytes } from "firebase/storage"
+import { getStorage, ref, uploadBytes, UploadResult } from "firebase/storage"
 
-import { firebaseConfig } from '../../resources.js'
+import { firebaseConfig } from './resources.js'
 
 
 const windowWidth = Dimensions.get('window').width;
@@ -36,10 +36,14 @@ const uploadToFirebase = async () =>{
 
   const result = await ImagePicker.launchImageLibraryAsync()
 
+  console.log(result)
+  const filename = result.assets[0].uri
+  console.log("NAVIGATED HERE: ", filename)
+
   const app = initializeApp(firebaseConfig)
   const storage = getStorage(app)
-  const filename = result.uri
-  const imageRef = ref(storage, 'images/'+filename)
+
+  const imageRef = ref(storage, filename)
   
   // quick way to get URL
   const url = `https://firebasestorage.googleapis.com/v0/b/favorite-location-map-app-deb.appspot.com/o/photos%2f${filename}?alt=media`
@@ -48,6 +52,7 @@ const uploadToFirebase = async () =>{
   console.log("")
 
   uploadBytes(imageRef)
+  //UploadResult(result)
   //find todds github
 
 }
