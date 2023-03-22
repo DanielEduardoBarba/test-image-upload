@@ -1,145 +1,136 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Button, Image, Text, View, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
-
-import { Camera, CameraType} from 'expo-camera';
+import { useState } from 'react';
+import { StyleSheet, View, Button, Image, ActivityIndicator } from 'react-native';
 import * as ImagePicker from "expo-image-picker"
 
-import { initializeApp, cert } from "firebase/app"
-import { getStorage, ref, uploadBytes, UploadResult } from "firebase/storage"
-
-import { firebaseConfig } from './resources.js'
-
-
-const windowWidth = Dimensions.get('window').width;
-const windowHeight = Dimensions.get('window').height; 
-
-
-export default function SaveSpot() {
-  const [type, setType] = useState(CameraType.back);
-  const [permission, requestPermission] = Camera.useCameraPermissions();
-  const [hasPermission, setHasPermission] = useState(null);
+//an instance of firebase is initiliazed
+//from firebaseConfig if none is open already
+import { firebase } from './resources.js'
 
 
 
-  useEffect(() => {
+export default function App() {
+  const [image, setImage] = useState(null)
+  const [uploading, setUploading] = useState(false)
 
-    async () => {
-      const { status } = await Camera.requestCameraPermissionsAsync();
-      setHasPermission(status === 'granted');
+
+
+  const pickImage = async () => {
+
+    const options = {
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 1,
     }
-  
-  }, []);
+
+    // No permissions request is necessary for launching the image library
+    // Opens image library and passes selected one using options set 
+    let result = await ImagePicker.launchImageLibraryAsync(options);
+
+    console.log(result);
+    if (!result.cancelled) setImage(result.uri);
+  };
+
+  const uploadImage = async () => {
+
+    //gets blob from selected image, which is found with the uri passed from 
+    //ImagePicker.launchImageLibraryAsync()
+    const blob = await new Promise((resolve, reject) => {
+
+      const xhr = new XMLHttpRequest()
+
+      xhr.onload = () => {
+        resolve(xhr.response)
+      }
+
+      xhr.onerror = () => {
+        reject(new TypeError('Network request failed'));
+      }
+
+      xhr.responseType = 'blob';
+      xhr.open('GET', image, true);
+      xhr.send(null);
+    })
+
+    //gets a reference to the firebase storage and a folder
+    //navigation to the exact file location and name in this case
+    //folder "Pictures" saved as "Image1.<filetype>"
+    const ref = firebase.storage().ref().child(`Pictures/Image1`)
 
 
-const uploadToFirebase = async () =>{
+
+    //ref.put sends the image by "blob" to the bucket
+    //returns a snapshot to watch if youd like
+
+    //only saves to storage bucket
+    ref.put(blob)
+    return
+
+    //saves to bucket AND shows update status using snapshot
+    //const snapshot = ref.put(blob)
 
 
-  const result = await ImagePicker.launchImageLibraryAsync()
+    //gives update of status of upload, does NOT effect actual upload
+    snapshot.on(firebase.storage.TaskEvent.STATE_CHANGED,
+      () => {
+        setUploading(true)
+      },
 
-  console.log(result)
-  const filename = result.assets[0].uri
-  console.log("NAVIGATED HERE: ", filename)
+      (error) => {
+        setUploading(false)
+        console.log(error)
+        blob.close()
+        return
+      },
 
-  const app = initializeApp(firebaseConfig)
-  const storage = getStorage(app)
+      () => {
 
-  const imageRef = ref(storage, filename)
-  
-  // quick way to get URL
-  const url = `https://firebasestorage.googleapis.com/v0/b/favorite-location-map-app-deb.appspot.com/o/photos%2f${filename}?alt=media`
-  //setUploadedImage(url)
-  console.log("URL: ",url)
-  console.log("")
+        snapshot.snapshot.ref.getDownloadURL().then((url) => {
 
-  uploadBytes(imageRef)
-  //UploadResult(result)
-  //find todds github
+          setUploading(false)
+          console.log("Download URL: ", url)
+          setImage(url)
 
-}
+          blob.close()
+          return url
+        })
+      })
+
+  }
+
 
 
   return (
-  
-    <View style={{ flex: 1 }}>
-      <Camera style={{ flex: 1 }} type={type} >
-        <View
-          style={{
-            flex: 1,
-            backgroundColor: 'transparent',
-            flexDirection: 'row',
-          }}>
-          <TouchableOpacity
-            style={{
-              flex: 0.1,
-              alignSelf: 'flex-end',
-              alignItems: 'center',
-            }}
-            onPress={() => {
-              setType(
-                type === Camera.Constants.Type.back
-                  ? Camera.Constants.Type.front
-                  : Camera.Constants.Type.back
-              );
-            }}>
-            <Text style={{ fontSize: 18, marginBottom: 10, color: 'white' }}>
-              {' '}
-              Flip{' '}
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={{
-              flex: 0.1,
-              alignSelf: 'flex-end',
-              alignItems: 'center',
-            }}
-            onPress={() => {
-             
-            uploadToFirebase()
-            }}>
-            <Text style={{ fontSize: 18, marginBottom: 10, color: 'white' }}>
-              {' '}
-              Take PHOTO{' '}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </Camera>
-    </View>
- 
 
-    
+    <View style={styles.container}>
+
+      {image && <Image source={{ uri: image }} style={{ width: 170, height: 200 }} />}
+
+      <Button styles={styles.button} title='Select Image' onPress={pickImage} />
+
+      {!uploading
+        ? <Button styles={styles.button} title='Upload Image' onPress={uploadImage} />
+        : <ActivityIndicator size={'small'} color='black' />}
+
+    </View>
+
   );
+
 }
+
+
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    borderColor: "red",
-    borderStyle:"solid",
-    borderWidth:5,
-    borderRadius:40
+    backgroundColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    margin: 5
   },
-  camera: {
-    flex: 1,
-    height:300,
-    borderColor: "black",
-    borderStyle:"solid",
-    borderWidth:5,
-    padding:-1,
-    margin:20,
-    borderRadius:40,
-    overflow:"hidden"
+  button: {
+    margin: 5,
+    backgroundColor: "teal"
   },
-  buttonContainer:{
-    backgroundColor:"red",
-    height:100,
-    width:200
-  },
-  button:{
-    backgroundColor:"wheat",
-    width:50,
-    height:50
-  },
-  text:{
-   fontSize:15 
-  }
+
 });
